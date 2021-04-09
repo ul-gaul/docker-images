@@ -30,6 +30,8 @@ RUN set -x \
         libgtk-3-dev \
         libgtk-3-dev:armhf \
         libgtk-3-dev:arm64 \
+    && apt-get install -qy --no-install-recommends \
+        gcc-multilib \
     && apt-get clean -q
 
 COPY ./tools /tools

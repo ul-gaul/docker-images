@@ -2,9 +2,23 @@
 
 ################### FUNCTIONS ####################
 
-# returns true if ANSI is enabled
+# Source: https://stackoverflow.com/a/52872489/5647659
+goto() {
+  label=$(shift)
+  cmd=$(sed -En "/^[[:space:]]*#[[:space:]]*$label:[[:space:]]*#/{:a;n;p;ba};" "$0")
+  eval "$cmd"
+  exit
+}
+
+# Returns true or false depending on the value of $1 (transforms $1 into a boolean)
+isTrue() {
+  # true if $1 is not empty and $1 != 0 and $1 != false
+  [ -n "$1" ] && [ "$1" != "0" ] && [ "$1" != "false" ]
+}
+
+# Returns true if ANSI is enabled
 useAnsi() {
-  [ -z "$NO_ANSI" ] || [ "$NO_ANSI" == "0" ] || [ "$NO_ANSI" == "false" ]
+  isTrue "$USE_ANSI"
 }
 
 # Prints an error message
@@ -51,6 +65,9 @@ if [ -z "$FRONTEND_DIR" ]; then
 fi
 
 ################### FRONTEND #####################
+if [ -d "$FRONTEND_DIR/dist" ] && isTrue "$SKIP_FRONTEND"; then
+  goto backend "$@"
+fi
 
 log 'Installing frontend dependencies...'
 wd="$(pwd)"
@@ -78,6 +95,7 @@ fi
 cd "$wd" || exit 1 # Should never fail
 
 ################### BACKEND ######################
+#backend:#
 
 log 'Downloading Go dependencies...'
 export CGO_ENABLED=1
@@ -112,9 +130,9 @@ for target in "$@"; do
     ldflags='-H windowsgui'
     output="${output}.exe"
     ;;
-  windows/386) # TODO not tested
-    CXX='x86_64-w64-mingw32-g++'
-    CC='x86_64-w64-mingw32-gcc'
+  windows/386)
+    CXX='i686-w64-mingw32-g++'
+    CC='i686-w64-mingw32-gcc'
     ldflags='-H windowsgui'
     output="${output}.exe"
     ;;
@@ -131,7 +149,11 @@ for target in "$@"; do
     GOARM="${GOARM:-7}" # Use ARMv7 by default
     ;;
   linux/amd64) ;; # Use system defaults
-  linux/386) ;; # TODO not tested
+  linux/386)
+    PKG_CONFIG_PATH='/usr/lib/i386-linux-gnu/pkgconfig'
+    CXX='i686-linux-gnu-g++'
+    CC='i686-linux-gnu-gcc'
+    ;;
   darwin/*)
     logW 'darwin not compatible (skipped)'
     continue
